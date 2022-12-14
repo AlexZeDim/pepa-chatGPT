@@ -4,6 +4,7 @@ import { InjectRedis } from '@nestjs-modules/ioredis';
 import { Client } from 'discord.js';
 import { chromium, firefox } from 'playwright-extra'
 import { setTimeout } from 'node:timers/promises';
+import qs from 'qs';
 
 @Injectable()
 export class AppService implements OnApplicationBootstrap {
@@ -29,29 +30,44 @@ export class AppService implements OnApplicationBootstrap {
     // Add the plugin to playwright (any number of plugins can be added)
     chromium.use(stealth)
 
+    const header = {
+      "accept-encoding": "gzip, deflate, br",
+      "accept-language": "en-US,en;q=0.9",
+      "authorization": "Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6Ik1UaEVOVUpHTkVNMVFURTRNMEZCTWpkQ05UZzVNRFUxUlRVd1FVSkRNRU13UmtGRVFrRXpSZyJ9.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL3Byb2ZpbGUiOnsiZW1haWwiOiJhbGV4emVkaW1AZ21haWwuY29tIiwiZW1haWxfdmVyaWZpZWQiOnRydWUsImdlb2lwX2NvdW50cnkiOiJLWiJ9LCJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsidXNlcl9pZCI6InVzZXItaW9SOHFKWmxtakpxcnlwQ21wcnExZk1FIn0sImlzcyI6Imh0dHBzOi8vYXV0aDAub3BlbmFpLmNvbS8iLCJzdWIiOiJhdXRoMHw2Mzk1OWNmMWRhMGE5ZDNkNTdkOWM0ZmUiLCJhdWQiOlsiaHR0cHM6Ly9hcGkub3BlbmFpLmNvbS92MSIsImh0dHBzOi8vb3BlbmFpLmF1dGgwLmNvbS91c2VyaW5mbyJdLCJpYXQiOjE2NzEwNDQxNDAsImV4cCI6MTY3MTA4NzM0MCwiYXpwIjoiVGRKSWNiZTE2V29USHROOTVueXl3aDVFNHlPbzZJdEciLCJzY29wZSI6Im9wZW5pZCBwcm9maWxlIGVtYWlsIG1vZGVsLnJlYWQgbW9kZWwucmVxdWVzdCBvcmdhbml6YXRpb24ucmVhZCBvZmZsaW5lX2FjY2VzcyJ9.1QevseaXLtBwQFkPMlZYH1vgXY9K8HTs-KKma_vrvLDoWOm9CSrtCD9Kwq5THtjUTtjDR7htrqq1s76lFxfDzzn8kWrnl0_ZekwWymIgmJu_Wp5yhXlmAgMlAq477pFDw-0zGUqiJtGOSCVyEXGBFnkYlX4SWxk_4aj6LVFsmc_NzxcFdKa8BhDPOEktegq9fEi0Rc3n9p_ohVwK_M0bFwDpU9BWEm2BAlNwSFUm-DKVf4JY9gHS6VMSffPYUYHNtr5FCLic9w5xVNshKA4bOxoahdQ1zLIdVSi8d-lg2ghmqSIEsJrgAB8q6QP9GfCBIiz0hrnsGBxQ0HvXJlv5Fg",
+      "content-type": "application/json",
+      "cookie": "cf_clearance=TjimrzAObOHpnUJP9vn4zdEKCHDRLwBGAi1NAK_u2gM-1671044123-0-1-1d486ff5.d6c481f7.f7f388fd-160; __Host-next-auth.csrf-token=74df784be72424850a7270d2c60c904ff6b154fdbece699ecdb24aa53fe00ece|41620db1fe540dae339be74515517822c1d20f574f3d61ad0a80dcf1a9da8f6b; __Secure-next-auth.callback-url=https://chat.openai.com/; __cf_bm=x_ExE0gtQ_ClITBJE7KjmEQB78hZ9zZbd6qjndrf5w0-1671046185-0-AWJn579jZS1CriHkZwI9GhRSh/Wk/VujQK/nbCZgttZZp7zrzZbjJCkbSq2E76T/7q6HR28FmLbt99kxWUx/MHRGnh+ehTu2lXktMwfneh92RWH9hcX4jTLBXdikAWMAYh3N0J8y09vDkwrT11W05izQCu/5IJrojVV1+04nUkDEQj+Rw9/HOvgGvRgMYktR8A==; __Secure-next-auth.session-token=eyJhbGciOiJkaXIiLCJlbmMiOiJBMjU2R0NNIn0..ytwLWtPvgPayFlV-.j3lZgREJQDEnHF2TkOrucUB_s98LP_L8S5hc6xiZna_Uphtx2ow7kzBtV-tZkMsW6IUlohEsHsyl1GS-xpOzYGu7T754jUDpAMr2fqcxfq6C9_uBTW_BIsSA8NXlArtAQm5OOeC1rloaJ6JcNhT8Wyr0OPaTJdr7uXbiJ7I3D2uLMq3xqeljgWnv_qCbQLxhv9nrUEJmXO_My6yBVPxVFj7E5pAzjiXuOWLuJw9NG7hDHpc6iVP125ujaewwArCOcj9CPgGneJ3_iYyDSCo5eNUQ2gSyQSvauPP4Fwp0mwremdwJjLkKrOPKMCmRE2Db3xmcDxNUHgIhMNapeVJDp8-3vyecefSKayIb_Jl5BZrXki4e-blHT0uwMSwoCDjSaVhSMk3jy82JkpCbXN0nL9p0_i3VsBc3nAhHxxHWgdvbJxOAO85vqFsWlqHmn6sCVbd_lSVwCuex5lzIXPJ9JrQjLJ88O2zwM-ytvDo32WirsGTuUVvgK1Tm7E36NiHuDVJFlwxQN_ajsAvtCAkvbDMYlT5Onv6uXXrMSQbpdw_q4O1MfE8YGxD2pXHJa-Ah3Xdh9Ch4go79OF_D4q76Cjx8M7IRgIZI6LG6Y-oNIVBUJSPTNk4jf09qHobzsfvgndkE_gD68SDfDVHiMKpkkt4WivnDZHkst7aJtUsDEsbPIRdyQQvH_MJL9ls2Z3yVIpNxnIH4KjhE7QHcw4cLn2Xxg_ySTVmYJyZhPOyaz6aghOFJ44H1WSs3fAMs1zXI0WGj16nvN2pXcNlF6n91hfi1rcce6R--EIBPxyrsDZAyTdGIQrwHuAZxNIqESmpHhTnQ0Of8pVNUDO3OEYhkAKeyuy4kLzalMUWqPsvp_SLbODAA29Fpwi0N3Ij8UFEOokT1h9_xhWH3_x9W_x7shqWMh7m9TH17a7ZhOErertaBat2-0lkaNSAzJffP4NSctx5vcQ13c2QjAJ6ej1-ITKWglE1UUGW79GgbLtI2IgIty9zJFjv5Se8APoGMUnoIWrEcmuzDWKk0Gv5GCdqCTCTnkqHO7Q5bdf7ssG0yZYcbL-GsLD37XtPfzNmcYyVTH_A7otWjZRfpEmmmnDPUrjllJcjMFACt_R3BJtNfPUDtLAR8ka3wnaF5MeS-VNc0LRAXhWKnqP2xH_L8jCcLbF1zZfmDLm9GugSZmxW1JmF8DvFEvKRv7dIXIdr3zyFCWmjfxAe_kSTxRkMdKz_64coD2JQv7B052w023pRtGEyXbh56RJTfOLyAjHCsoLXW94yCnuMMxKJOXZjdukitOJA1gzt4UngwRmPrhZpRdGBRS9NPYSxvd2n0zXKdhv3WV-k9E8WbY7VjGLz3WGN-5fg2Ck4jwtmDnnuNlkh58hrunbgjqqeQeG9n3xZpJsNe4Nd3ZfpzSaRn4grwHZoX9jyVc0cK_E__b19vkIxsvh_vEXJCdQryueqtHajGbtW6XLWMcJt38DLf0TJRrmTyxDWw5uO1f6HP55FcX6h2Ho48efS25YEio7kgT1e57uR-UnnSwuq2uVyq3a7knmtyvqKvzZnx_v0LWbt7mCQsm3zVyqv5owYx1Ny0y7FR1Yzj4PKehtU-Oh3pUe3phGuetx8yI_dqgcE1tY01E8F0OwCec4CTooNfByeUiJrZy71lN61wZehWm9GTuLGVd88WXMemuDI1pbkQjFHedX19A7ecGyVaBZ5DdoX0hiKvzU1lsIUhtxS3fnZJTkM31CmQw9NmzzaSSrAQ-DY6MqYBtWcX6K71c5tcq21A3j8tmJ5JZc4uZ5xuOFss9-SxrSkLe76M73wCQaqurni9ziP2lkN4DG0jVHeZVTx_q1-1hfJynEL89pqAEO3RYqS7FVt1pw8uEA4bkeYznbigQW5iSSMF0AvDCBCpuJLA-FSsFerCFKETIJ4CKnShRfbXFm16l6UNKaSxs6zBg8DYfY70CipFlBYFMty2d_4Nv1tkOc-tiXsUOxZ2Coi-aYUMNQh59mhUmslf4MmiO3nTFtFvSHx82qJU-r9OmDW2NdY7fYUmkDuQqjpOnrL4jQSF7Urxe1z5EBSnuWUoA-VRrbzBtlOwvimYdobdSonf7XsY2Dqe2YgBIZYartlpTgJVY6KYpEFeM19tXqunLScwdcRdfGUFYbV1Bf2mKeBLsXA0s-fn95gN_1JhAPSkmEQ8BRuWk5dAXHkW-Zv5FdidF9FOSv3ukxgPc1qZfNHtGnmxyp8ZZTwwYCqPlaEjnzEzAtb4mjnV8HKy4VaXKqOKXks4NqmdyzmJQQeQyWxL4M3JWmXSos6Mrd1cLZmETtxGeuUFFoGiA_sRe_I0pIzk7Pxfkw.Nn6N7BDh38giGnNOROBRcg",
+      "origin": "https://chat.openai.com",
+      "referer": "https://chat.openai.com/chat",
+      "sec-fetch-dest": "empty",
+      "sec-fetch-mode": "cors",
+      "sec-fetch-site": "same-origin",
+      "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36"
+    };
+
+    const postData = {
+      input: 'Got any creative ideas for a 10 year old’s birthday?',
+      model: 'text-moderation-playground',
+    };
+
     // That's it, the rest is playwright usage as normal 😊
     chromium.launch({ headless: false }).then(async browser => {
       const page = await browser.newPage({
         serviceWorkers: "allow",
-        extraHTTPHeaders: {
-          "accept-encoding": "gzip, deflate, br",
-          "accept-language": "en-US,en;q=0.9",
-          "authorization": "Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6Ik1UaEVOVUpHTkVNMVFURTRNMEZCTWpkQ05UZzVNRFUxUlRVd1FVSkRNRU13UmtGRVFrRXpSZyJ9.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL3Byb2ZpbGUiOnsiZW1haWwiOiJhbGV4emVkaW1AZ21haWwuY29tIiwiZW1haWxfdmVyaWZpZWQiOnRydWUsImdlb2lwX2NvdW50cnkiOiJLWiJ9LCJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsidXNlcl9pZCI6InVzZXItaW9SOHFKWmxtakpxcnlwQ21wcnExZk1FIn0sImlzcyI6Imh0dHBzOi8vYXV0aDAub3BlbmFpLmNvbS8iLCJzdWIiOiJhdXRoMHw2Mzk1OWNmMWRhMGE5ZDNkNTdkOWM0ZmUiLCJhdWQiOlsiaHR0cHM6Ly9hcGkub3BlbmFpLmNvbS92MSIsImh0dHBzOi8vb3BlbmFpLmF1dGgwLmNvbS91c2VyaW5mbyJdLCJpYXQiOjE2NzEwNDQxNDAsImV4cCI6MTY3MTA4NzM0MCwiYXpwIjoiVGRKSWNiZTE2V29USHROOTVueXl3aDVFNHlPbzZJdEciLCJzY29wZSI6Im9wZW5pZCBwcm9maWxlIGVtYWlsIG1vZGVsLnJlYWQgbW9kZWwucmVxdWVzdCBvcmdhbml6YXRpb24ucmVhZCBvZmZsaW5lX2FjY2VzcyJ9.1QevseaXLtBwQFkPMlZYH1vgXY9K8HTs-KKma_vrvLDoWOm9CSrtCD9Kwq5THtjUTtjDR7htrqq1s76lFxfDzzn8kWrnl0_ZekwWymIgmJu_Wp5yhXlmAgMlAq477pFDw-0zGUqiJtGOSCVyEXGBFnkYlX4SWxk_4aj6LVFsmc_NzxcFdKa8BhDPOEktegq9fEi0Rc3n9p_ohVwK_M0bFwDpU9BWEm2BAlNwSFUm-DKVf4JY9gHS6VMSffPYUYHNtr5FCLic9w5xVNshKA4bOxoahdQ1zLIdVSi8d-lg2ghmqSIEsJrgAB8q6QP9GfCBIiz0hrnsGBxQ0HvXJlv5Fg",
-          "content-type": "application/json",
-          "cookie": "cf_clearance=TjimrzAObOHpnUJP9vn4zdEKCHDRLwBGAi1NAK_u2gM-1671044123-0-1-1d486ff5.d6c481f7.f7f388fd-160; __Host-next-auth.csrf-token=74df784be72424850a7270d2c60c904ff6b154fdbece699ecdb24aa53fe00ece%7C41620db1fe540dae339be74515517822c1d20f574f3d61ad0a80dcf1a9da8f6b; __Secure-next-auth.callback-url=https%3A%2F%2Fchat.openai.com%2F; __cf_bm=Bg42RTQotk4_zlnhMoPErWHTdd7FbPT2kMk8Vg_7roo-1671045062-0-AVkP4VdABWiE5H8exHrDlkTWr56lYIMa7CGazDGIO4p8pb0vbS+rkcK/DrPFib9NIRSTBJ9oxE0tlXUdc0N+FvRTDXobzeBicJurFZoF/1Bl1FjiZLzIp1REbV0KvdwrfQcjhJof0CJVIblqYwas31v9KYY5NLs9pmz60MjtG4GQKz1grDWs1BoeggxWn8ih+w==; __Secure-next-auth.session-token=eyJhbGciOiJkaXIiLCJlbmMiOiJBMjU2R0NNIn0..2MV6MeUAl8SNalVS.sHeD2m8cdCzZTSselG3Gz6UbA2q7o9VG9wZ_5IoIq-4JOu5srhPVQ_DHUSkq91aM1N5_Ow3G5j4ENBun7uNiBwXQ_zTsLfepBIIFe4QoSAoXw1tDJD6vPZG_K7-i-XuHHckKclw_zJu3IJ7akZuqHFpaiPTcdukxpMBR-X33GcZncVhggy-YTjnyoWHY310AOYrlxxsSQnQ-yiR57H7vx60e4kWbhlFn6uehXdYQ2Q7Fd3zWbL9Vwvu1s5QRf-HUGA7yJ8KJa_Sv4MPtIQ1SX2HmguevYgeE83Sx53SXoP---I8cpCcEEcPH2IarsPhmWR5S2iDktJ3svo01ctZWvcEi6jPV_B_ovCHqQPQ8R8iMHc6qdUT4Ydsiy5-gy25zEvzLrKYORy0TExCibPKc3eeePwsvryHhwubXxFz7MPM3r6ns_7FfVpEWMg3HTOTtXpC6BSGAvNvoxaC9fHVsu79OJwLB0bWdVIlBXu7TUGbHqedxukM72jwEiqluXLtWXP9f1mwIASfMcN4T-TSw3bccKZs259ZDU7q3Q0AJSdGb0TFgWLAfRlVelJ1btAKTb-yg6gJnkAkifZGB3B8cLerGB-n_I_Rh2eQdck6vI3mQQFTsTNbciLTQbaRNlShrfPyrj-sEBnE4d6Y1szeFqLky1s0_bSwfO21hdzL8TTxGx8yv2fFhJ_K_DEh5O9PI4w1bLl9ewXmL6JCdK7sneDOSuAghzl5z77kbubktepcTaalw5lnU6ccmzWq9qMfjvpXb1BRrJmYuqD5pLyk8G0MZMdtikoYPStz8NJ4DJc7UBAaypv6z3Qfhk00DItJiGjgQHllTtexdhen9o4BEOESr44dlXW2adXL24DtV1sdBDlwyBbtfo2E7hFue15hYYdnpySbDrcqQryP6x8_y8T4Vwfh8MQnr5N-uKO0r-SJOdOlVUbZJkJFIKh89KK2283phC_3JcPaLD0lgiK7AgHQ-3P6g5ByjM6M-C_EqlJ_YJKr6klX7tyUshm9YsN29kfeZYy4gblDTOctGBpkVPci1q6rHTqR34gDXfFEBLjUHXHys0CLm6G3ZfgKqpSVBAcTS9wMYe3OSsNdbI4CRrNVuXNJ34VOetaPh022tonbfgEQIlRtf_Jz8nvZitN44SUJK80afs3cvshV81KmD-7OnVtCtGo2-FaSFd4d459Z7kJ7SN8GMnab0MDFAkiy1mvyqAZIqHlD5RhgrdRDJNjNjsRsmjB4WQ3P7VpVmn0te-aC-senb-REyyywf-HEYnBbmosnVODR2qFxq7o_UnBG-faRZSRSrco6zVLbDWBCXtUbkjWtmvisXk7HjRMs3ulkmZViNnyM_8GsTSvWUvZRlGT6SrttByG-p_YkBvYypz8Bg_Y2B-bB9wt0RUmeNiyoZqotjamtX8wIMYc1JIpeXqhji4bAhbbtWgrwziUaCc13mwRSYIh2ZmvLm3TKouamRleucEA5Aysk2GC1S3iqac8Vrab-ct7WpfshkAF4KdfD3SRoMOyrFI_aTkaYVBJfmpz0qCp4os9WUKBTQYyAA4ge5E9xrxEd4Aw4Vlu0MX5L0OFWb0L_PE_EdOrILuNS0THzVJHr8O3lTmCe4Uo6rAG3bRyRuFgPGXUUr5eCpoyPxW2ody2rDJFy3MvAuqVE4PlPw_R1yrVMrnEhTmJeyVCeNBkcmed60sbVa6rva3TpUe8uDwa96o0ljuzIx7WFSPNPjC2Mx-4DmYTLfCCchVLCF7m8YNKcHgHHgZWT7JAur0ECOY_3PWwXYMSxXo_CfvVnpM_D12zjvMBHCacxa-pO9N94qNKlxH6L7uZYvWrwusNlYaZvFSk2J0oYtZefOQiRDW7OHBRtd3DSPFLtEISr1R7qSJnIPlHFE_FWVrGvUBkFz6dS46UmpURlPDMSz-eTqacW8bCKSD-HVRTo4G52XdyyidGZeDLpdY6iXxBSecIKT1rpkZBA41ZFKnFbZ5SiOIX2i9pwpJ44Tdgwpf2GMUYwxyTgYkidNiGbUp3C2k90_aqypOVfuvWS_LS9DAztzb_Yo0DaYEEwu_UlIl2lKBNjF3mI45pDAI6jv6oOg25ZjVQwyPYtw5ux5HMJ-zGUjzxNvHqfXHWuD8W-pHDENEmRLJYAzdrhgT7BEXsyaDYbcera8f_yg-Dpw75eWK3DFhpA3GrWx_Ho1TcsQzA1kYIZUwYuHdQRzOIicv3_nlHTwv-_0xZN49i7hWBoMNQ9bJrVwU2U3l1uBXDY4h_fnuevKmfb6ZRj9IZspQPRkZ1O78pUNCI-1B6wFErW8e5X3bLFEQv0s0XUScEsrQ6lMqNNHOT2XrDTbyQ.tF0yx0p438aNQbCJgT7zUA",
-          "origin": "https://chat.openai.com",
-          "referer": "https://chat.openai.com/chat",
-          "sec-fetch-dest": "empty",
-          "sec-fetch-mode": "cors",
-          "sec-fetch-site": "same-origin",
-          "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36"
-        }
+        extraHTTPHeaders: header,
       })
 
       console.log('Testing the stealth plugin..')
       await page.goto('https://chat.openai.com/chat', { waitUntil: 'networkidle' })
 
       await setTimeout(30_000);
+
+      const response = await page.request.post('https://chat.openai.com/chat',
+        {
+          data: qs.stringify(postData),
+          headers: header
+        }
+      );
+      console.log(response);
 
       await page.on('response', (page) => {
         const h = page.allHeaders();
