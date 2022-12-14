@@ -4,7 +4,6 @@ import { MessageActionRowComponentBuilder } from '@discordjs/builders';
 import { REST } from '@discordjs/rest';
 import Redis from 'ioredis';
 import { InjectRedis } from '@nestjs-modules/ioredis';
-import { ChatGPTAPI, getOpenAIAuth } from 'chatgpt'
 import { Client } from 'discord.js';
 
 
@@ -26,6 +25,9 @@ export class AppService implements OnApplicationBootstrap {
   async test() {
      console.log(process.env.OPENAI_EMAIL, process.env.OPENAI_PASSWORD);
     // use puppeteer to bypass cloudflare (headful because of captchas)
+    // To use ESM in CommonJS, you can use a dynamic import
+    const { ChatGPTAPI, getOpenAIAuth } = await import('chatgpt')
+
     const openAIAuth = await getOpenAIAuth({
       email: process.env.OPENAI_EMAIL,
       password: process.env.OPENAI_PASSWORD
@@ -34,12 +36,7 @@ export class AppService implements OnApplicationBootstrap {
     const api = new ChatGPTAPI({ ...openAIAuth })
     await api.ensureAuth()
 
-    // send a message and wait for the response
-    const response = await api.sendMessage(
-      'Write a python version of bubble sort.'
-    )
-
-    // response is a markdown-formatted string
+    const response = await api.sendMessage('Hello World!')
     console.log(response)
   }
 }
